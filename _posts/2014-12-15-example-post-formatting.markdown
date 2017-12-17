@@ -1,56 +1,343 @@
 ---
 layout: post
-title:  "Example Post Formatting"
-date:   2014-12-15
-description: This is a post description for meta purposes. This is also the excerpt of the article that shows up on the index/home page. Change this in the post YAML.
+title:  "ossw-제출"
+date:   2017-12-17
+
 ---
 
-<p class="intro"><span class="dropcap">C</span>urabitur blandit tempus porttitor. Nullam quis risus eget urna mollis ornare vel eu leo. Vestibulum id ligula porta felis euismod semper. Donec sed odio dui. Aenean lacinia bibendum nulla sed consectetur.</p>
 
-# Heading 1
+# Coding
 
-## Heading 2
+## music_play
 
-### Heading 3
+import time
+import vlc
+import smbus
+import RPi.GPIO as GPIO
+import os
 
-#### Heading 4
+// button
+GPIO.setmode(GPIO.BCM)
 
-##### Heading 5
+GPIO.setup(18,GPIO.IN)#pause
+GPIO.setup(23,GPIO.IN)#change
+GPIO.setup(24,GPIO.IN)#down
+GPIO.setup(25,GPIO.IN)#break
 
-###### Heading 6
 
-<blockquote>Aenean lacinia bibendum nulla sed consectetur. Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Cras mattis consectetur purus sit amet fermentum. Nulla vitae elit libero, a pharetra augue. Curabitur blandit tempus porttitor. Donec sed odio dui. Cras mattis consectetur purus sit amet fermentum.</blockquote>
+// Define some device parameters
+I2C_ADDR  = 0x27 # I2C device address
+LCD_WIDTH = 16   # Maximum characters per line
 
-Nullam quis risus eget urna mollis ornare vel eu leo. Cras mattis consectetur purus sit amet fermentum. Duis mollis, est non commodo luctus, nisi erat porttitor ligula, eget lacinia odio sem nec elit. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor.
+// Define some device constants
+LCD_CHR = 1 # Mode - Sending data
+LCD_CMD = 0 # Mode - Sending command
 
-## Unordered List
-* List Item
-* Longer List Item
-  * Nested List Item
-  * Nested Item
-* List Item
+LCD_LINE_1 = 0x80 # LCD RAM address for the 1st line
+LCD_LINE_2 = 0xC0 # LCD RAM address for the 2nd line
+LCD_LINE_3 = 0x94 # LCD RAM address for the 3rd line
+LCD_LINE_4 = 0xD4 # LCD RAM address for the 4th line
 
-## Ordered List
-1. List Item
-2. Longer List Item
-    1. Nested OL Item
-    2. Another Nested Item
-3. List Item
+LCD_BACKLIGHT  = 0x08  # On
+//LCD_BACKLIGHT = 0x00  # Off
 
-## Definition List
-<dl>
-  <dt>Coffee</dt>
-  <dd>Black hot drink</dd>
-  <dt>Milk</dt>
-  <dd>White cold drink</dd>
-</dl>
+ENABLE = 0b00000100 # Enable bit
 
-Donec id elit non mi porta gravida at eget metus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Maecenas faucibus mollis interdum. Donec sed odio dui. Cras justo odio, dapibus ac facilisis in, egestas eget quam.
+// Timing constants
+E_PULSE = 0.0005
+E_DELAY = 0.0005
 
-Cras justo odio, dapibus ac facilisis in, egestas eget quam. Curabitur blandit tempus porttitor. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec id elit non mi porta gravida at eget metus. Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Sed posuere consectetur est at lobortis. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor.
+//Open I2C interface
+//bus = smbus.SMBus(0)  # Rev 1 Pi uses 0
+bus = smbus.SMBus(1) # Rev 2 Pi uses 1
 
-Maecenas faucibus mollis interdum. Maecenas faucibus mollis interdum. Duis mollis, est non commodo luctus, nisi erat porttitor ligula, eget lacinia odio sem nec elit. Etiam porta sem malesuada magna mollis euismod. Vestibulum id ligula porta felis euismod semper. Cras mattis consectetur purus sit amet fermentum.
+def lcd_init():
+  // Initialise display
+  lcd_byte(0x33,LCD_CMD) # 110011 Initialise
+  lcd_byte(0x32,LCD_CMD) # 110010 Initialise
+  lcd_byte(0x06,LCD_CMD) # 000110 Cursor move direction
+  lcd_byte(0x0C,LCD_CMD) # 001100 Display On,Cursor Off, Blink Off
+  lcd_byte(0x28,LCD_CMD) # 101000 Data length, number of lines, font size
+  lcd_byte(0x01,LCD_CMD) # 000001 Clear display
+  time.sleep(E_DELAY)
 
-Sed posuere consectetur est at lobortis. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum.
+def lcd_byte(bits, mode):
+  // Send byte to data pins
+  // bits = the data
+  // mode = 1 for data
+  //        0 for command
 
-Curabitur blandit tempus porttitor. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Curabitur blandit tempus porttitor. Nullam quis risus eget urna mollis ornare vel eu leo. Maecenas faucibus mollis interdum. Nullam id dolor id nibh ultricies vehicula ut id elit.
+  bits_high = mode | (bits & 0xF0) | LCD_BACKLIGHT
+  bits_low = mode | ((bits<<4) & 0xF0) | LCD_BACKLIGHT
+
+  // High bits
+  bus.write_byte(I2C_ADDR, bits_high)
+  lcd_toggle_enable(bits_high)
+
+  // Low bits
+  bus.write_byte(I2C_ADDR, bits_low)
+  lcd_toggle_enable(bits_low)
+
+def lcd_toggle_enable(bits):
+  // Toggle enable
+  time.sleep(E_DELAY)
+  bus.write_byte(I2C_ADDR, (bits | ENABLE))
+  time.sleep(E_PULSE)
+  bus.write_byte(I2C_ADDR,(bits & ~ENABLE))
+  time.sleep(E_DELAY)
+
+def lcd_string(message,line):
+  // Send string to display
+  message = message.ljust(LCD_WIDTH," ")
+
+
+  lcd_byte(line, LCD_CMD)
+
+  for i in range(LCD_WIDTH):
+    lcd_byte(ord(message[i]),LCD_CHR)
+
+def read():
+    f = open("newfile.txt","r")
+    num= f.readline()
+    num = int(num)
+    f.close()
+    return num
+
+def write(a):
+    f =open("newfile.txt","w")
+    f.write(a)
+    f.close()
+
+
+def main():
+  // Main program block
+
+  // Initialise display
+  lcd_init()
+  path_home = "/home/pi/Music/"
+  a = os.listdir(path_home)
+  music_num = read()
+  file = ('/home/pi/Music/'+a[music_num])
+  instance = vlc.Instance()
+  media = instance.media_new(file)
+  player=instance.media_player_new()
+  player.set_media(media)
+  player.play()
+  time.sleep(1)
+
+  while True:
+    number = player.get_state()
+    if(number==6):
+      music_num+=1
+      file = ('/home/pi/Music/'+a[music_num])
+      instance = vlc.Instance()
+      player=instance.media_player_new()
+      media = instance.media_new(file)
+      player.set_media(media)
+      player.play()
+
+    if GPIO.input(18)==0:
+        if number ==3:
+            player.pause()
+            time.sleep(1)
+        if number ==4:
+            player.play()
+            time.sleep(1)
+
+    elif GPIO.input(23)==0:
+        player.pause()
+        time.sleep(1)
+        print("change the music")
+        music_num+=1
+        if (music_num > 3):
+            music_num = 0
+        file = ('/home/pi/Music/'+a[music_num])
+        instance = vlc.Instance()
+        player=instance.media_player_new()
+        media = instance.media_new(file)
+        player.set_media(media)
+        player.play()
+
+    elif GPIO.input(24)==0:
+        player.pause()
+        time.sleep(1)
+        print("down music")
+        music_num -= 1
+        if (music_num < 0):
+            music_num = 3
+        file = ('/home/pi/Music/'+a[music_num])
+        instance = vlc.Instance()
+        player=instance.media_player_new()
+        media = instance.media_new(file)
+        player.set_media(media)
+        player.play()
+
+    elif GPIO.input(25)==0:
+        print(" Turnoff the programm !")
+        music_num=str(music_num)
+        write(music_num)
+        break
+    
+    
+    if music_num ==0:
+      lcd_string("     Know    ",LCD_LINE_1)
+      lcd_string("    C-jamm   ",LCD_LINE_2)
+      time.sleep(0.3)
+      lcd_string("       Know  ",LCD_LINE_1)
+      lcd_string("      C-jamm ",LCD_LINE_2)
+      time.sleep(0.3)
+      lcd_string("         Know ",LCD_LINE_1)
+      lcd_string("        C-jamm",LCD_LINE_2)
+      time.sleep(0.3)
+      lcd_string("Know          ",LCD_LINE_1)
+      lcd_string("C-jamm        ",LCD_LINE_2)
+      time.sleep(0.3)
+      lcd_string("   Know       ",LCD_LINE_1)
+      lcd_string("  C-jamm      ",LCD_LINE_2)
+      time.sleep(0.3)
+      
+    if music_num ==1:
+      lcd_string("     Phonecert  ",LCD_LINE_1)
+      lcd_string("     10cm   ",LCD_LINE_2)
+      time.sleep(0.3)
+      lcd_string("     Phonecert  ",LCD_LINE_1)
+      lcd_string("       10cm ",LCD_LINE_2)
+      time.sleep(0.3)
+      lcd_string("      Phonecert ",LCD_LINE_1)
+      lcd_string("        10cm",LCD_LINE_2)
+      time.sleep(0.3)
+      lcd_string(" Phonecert      ",LCD_LINE_1)
+      lcd_string("  10cm     ",LCD_LINE_2)
+      time.sleep(0.3)
+      lcd_string("   Phonecert    ",LCD_LINE_1)
+      lcd_string("     10cm   ",LCD_LINE_2)
+      time.sleep(0.3)
+
+    if music_num ==2:
+      lcd_string("     11:11   ",LCD_LINE_1)
+      lcd_string("   Tae-yeon   ",LCD_LINE_2)
+      time.sleep(1)
+
+    if music_num ==3:
+      lcd_string("      JOAH   ",LCD_LINE_1)
+      lcd_string("    Jay-park   ",LCD_LINE_2)
+      time.sleep(1)
+
+
+
+if __name__ == '__main__':
+
+  try:
+    main()
+  except KeyboardInterrupt:
+    pass
+  finally:
+    lcd_byte(0x01, LCD_CMD)
+
+## Button
+import time
+import RPi.GPIO as GPIO
+
+GPIO.setmode(GPIO.BCM)
+
+GPIO.setup(23, GPIO.OUT)
+GPIO.setup(24, GPIO.OUT)
+
+GPIO.setup(18, GPIO.IN)
+
+print("Button pressed!")
+
+try:
+    while True:
+        GPIO.output(23,False)
+        GPIO.output(24,False)
+
+    if GPIO.input(18)==0:
+        print("Button pressed!")
+
+        GPIO.output(23, True)
+        GPIO.output(24,True)
+
+        time.sleep(1)
+
+        print("Press the button (CTL-C to exit)")
+
+except KeyboardInterrupt:
+    GPIO.cleanup()
+    
+
+## vlc
+import RPi.GPIO as GPIO
+import time
+import vlc
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(18, GPIO.IN)
+GPIO.setup(23, GPIO.IN)
+ 
+file ="/home/pi/Desktop/phone_10cm.mp3"
+instance = vlc.Instance()
+ 
+player=instance.media_player_new()
+media=instance.media_new(file)
+ 
+player.set_media(media)
+
+player.play()
+time.sleep(1)
+ 
+while True:
+    a=player.get_state()
+    
+    if GPIO.input(18) == 0:
+        if a == 3:
+            player.pause()
+            a=player.get_state()
+            print"pause"
+        elif a == 4:
+            player.pause()
+            a = player.get_state()
+            print"resume"
+            
+    time.sleep(0.5)
+ 
+    if GPIO.input(23) == 0:
+        player.stop()
+        break
+
+
+# 라이노
+![캡처.PNG](C:\Users\suzi6\Desktop\캡처.PNG)
+
+# 영상
+https://www.youtube.com/watch?v=3i_ZC3cKpwo
+
+#PPT
+
+![슬라이드1.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드1.PNG)
+
+![슬라이드2.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드2.PNG)
+
+![슬라이드3.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드3.PNG)
+
+![슬라이드4.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드4.PNG)
+
+![슬라이드5.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드5.PNG)
+
+![슬라이드6.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드6.PNG)
+
+![슬라이드7.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드7.PNG)
+
+![슬라이드8.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드8.PNG)
+
+![슬라이드9.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드9.PNG)
+
+![슬라이드10.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드10.PNG)
+
+![슬라이드11.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드11.PNG)
+
+![슬라이드12.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드12.PNG)
+
+![슬라이드13.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드13.PNG)
+
+![슬라이드14.PNG](C:\Users\suzi6\Desktop\오픈소스 ppt\슬라이드14.PNG)
