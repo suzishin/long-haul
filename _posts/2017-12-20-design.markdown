@@ -8,3 +8,13 @@ date:   2017-12-20
 # Rhino
 
 ![capture](https://raw.githubusercontent.com/suzishin/suzishin.github.io/ba93b048e4c3c45a705d9e541dcc7f1afa5befec/캡처.PNG)
+
+
+# PPT
+### 디자인부분
+
+![yellow1](https://raw.githubusercontent.com/suzishin/suzishin.github.io/ba93b048e4c3c45a705d9e541dcc7f1afa5befec/슬라이드3.PNG)
+
+![yellow2](https://raw.githubusercontent.com/suzishin/suzishin.github.io/ba93b048e4c3c45a705d9e541dcc7f1afa5befec/슬라이드4.PNG)
+
+![yellow3](https://raw.githubusercontent.com/suzishin/suzishin.github.io/ba93b048e4c3c45a705d9e541dcc7f1afa5befec/슬라이드6.PNG)
