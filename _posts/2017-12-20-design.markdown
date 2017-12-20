@@ -7,4 +7,4 @@ date:   2017-12-20
 
 # Rhino
 
-![capture](/suzishin/suzishin.github.io/ba93b048e4c3c45a705d9e541dcc7f1afa5befec/캡처.PNG)
+![capture](https://raw.githubusercontent.com/suzishin/suzishin.github.io/ba93b048e4c3c45a705d9e541dcc7f1afa5befec/캡처.PNG)
